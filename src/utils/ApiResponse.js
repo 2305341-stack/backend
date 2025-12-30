@@ -7,4 +7,5 @@ class ApiResponse {
     }
 }
 
+export { ApiResponse }
 // read https status code response

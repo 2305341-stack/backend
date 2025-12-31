@@ -21,7 +21,7 @@ const registerUser = asyncHandler( async (req, res) => {
         //getting user details from frontend .body is used jab data form se ya json se aarha h, url se arha uska alag hota h
 
        const {fullName, email, username, password} = req.body
-       console.log("email: ", email);
+       // console.log("email: ", email);
 
 
 
@@ -38,18 +38,29 @@ const registerUser = asyncHandler( async (req, res) => {
             }
 
 
-    const existedUser = User.findOne({
+    const existedUser = await User.findOne({
         $or: [{ email }, { username }] // using the $ we can use various operators. here we are using or to check if either of email or username exists, we can pass as many fiedls as we want to check in it
     })
 
     if (existedUser) {
         throw new ApiError(409, "username or email already exists")
     }
-
+    // console.log(req.files); // sb aise hi print krke dekho
     // jaise req.body by default express ne dediya h waise hi req.files ka access multer ne diya h
     // ab hoskta h files ka access ho ya na ho toh optionally chain krna behtar h isliye ? use kiya h 
     const avatarLocalPath = req.files?.avatar[0]?.path;
-    const coverImageLocalPath = req.files?.coverImage[0]?.path;
+    // incase of optional chaining like ? here in both, for avatar we have checked in the next step
+    // as coverimage is not required so we havent checked for it but in this case if the user doesnt upload the
+    // the cover image then it will give error because coverimage will get undefined even if it is optional 
+    // so we have to add a code if we are not checking for something , we can use if else for checkiong if that value came or not
+
+    //   const coverImageLocalPath = req.files?.coverImage[0]?.path;
+    //so now we are writing like this
+    // also what we could do was we could also say that directory null krdo agar cover image ni h toh wo v ek tareeka h
+    let coverImageLocalPath; //remember scope issues
+    if(req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0){
+        coverImageLocalPath = req.files.coverImage[0].path
+    }
 
     if (!avatarLocalPath) {
         throw new ApiError(400, "Avatar is required")
@@ -73,7 +84,7 @@ const registerUser = asyncHandler( async (req, res) => {
         password,
         username: username.toLowerCase()
      })
-
+        // removing password and refresh token
      const createdUser = await User.findById(user._id).select(
         "-password -refreshToken"
      )

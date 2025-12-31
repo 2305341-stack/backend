@@ -64,12 +64,22 @@ const UserSchema = new Schema(
 // isiliye iss trh se call back likhrhe h ...() => {} aise nahi
 // async kyunki ye encryption wagera time leti h 
 //middleware
-UserSchema.pre("save", async function (next) {
+/*UserSchema.pre("save", async function (next) {
     if(!this.isModified("password")) return next();
 
     this.password = await bcrypt.hash(this.password, 10)
     next()
-})
+})*/ //this was written by sir but async and next can there be used together. 
+
+UserSchema.pre("save", async function () {
+    if (!this.isModified("password")) return;
+
+    try {
+        this.password = await bcrypt.hash(this.password, 10);
+    } catch (err) {
+        throw err;   // ← this replaces next(err)
+    }
+});
 
 UserSchema.methods.isPasswordCorrect = async function(password){
    return await bcrypt.compare(password, this.password)

@@ -2,6 +2,8 @@
 // thats why see in some places there is User and others there is user
 //keep this in mind
 
+// also whenever database is being called always use await
+
 import { asyncHandler } from "../utils/asyncHandler.js";
 import {ApiError} from "../utils/ApiError.js"
 import { User } from "../models/user.model.js" // here we are importing the User from the user schema to check if the user already exists or not
@@ -279,7 +281,7 @@ return res
 const getCurrentUser = asyncHandler(async (req, res) => {
     return res
     .status(200)
-    .json(200, req.user, "current user fetched successfully")
+    .json(new ApiResponse(200, req.user, "current user fetched successfully"))
 })
 
 const updateAccountDetails = asyncHandler(async (req, res) => {
@@ -289,7 +291,7 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
         throw new ApiError(400, "All fields are required")
     }
 
-    const user = User.findByIdAndUpdate(
+    const user = await User.findByIdAndUpdate(
         req.user?._id,
         {
             $set: {
@@ -308,12 +310,17 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
 // controller for updating files, advice: always write separate controllers for updating files
 // file update krne keliye multer middleware use krna hoga kyunki uss se file update krwayi h
 // also authenticate wala v krna hoga kyunki agar user logged in nahi hai toh update kaise krega
+
+
+
+// assignment : delete the old image write a utility func for it
+
 const updateUserAvatar = asyncHandler(async (req, res) => {
     // req.files multer middleware se milrha
     // ab wahan pe multiple files kr rhe the islie req.files liye the
     // yahan pe sirf ek file ki baat h toh req.file lena hoga
 
-    const avatarLocalPath = req.file?.path
+const avatarLocalPath = req.file?.path
 
     if (!avatarLocalPath) {
         throw new ApiError(400, "file is missing")

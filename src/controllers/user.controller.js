@@ -253,6 +253,131 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
   }
   // now we will make an endpoint for refresh token in routes
 })
+// ab hum banarhe kuch kuch functions user keliye
+// agar password change kr parha h iska mtlb user logged in h
+// agar loggedin h, kyunki humne auth middleware lagaya h and middleware k req.user m humne user ki information le rkhi h
+// toh agar auth middleware chala h toh user humein wahan se milega
+// user se related har cheez m pehla question yahi h ki user kahan se milega upar v jitna banaye yahan v
+const changeCurrentPassword = asyncHandler(async (req, res) => {
+    const {oldPassword, newPassword} = req.body
+
+    const user = await User.findById(req.user?._id) // ? indicates ki agar req.user hoga whaan pe toh id nikal lo
+    const isPasswordCorrect = await user.isPasswordCorrect(oldPassword) //await krwarhe kyunki ye ek async method h
+    if (!isPasswordCorrect) {
+        throw new ApiError(400, "invalid password")
+    }
+//else
+user.password = newPassword
+await user.save({validateBeforeSave: false})
+
+return res
+.status(200)
+.json(new ApiResponse(200, {}, "Password changed successfully"))
+
+})
+
+const getCurrentUser = asyncHandler(async (req, res) => {
+    return res
+    .status(200)
+    .json(200, req.user, "current user fetched successfully")
+})
+
+const updateAccountDetails = asyncHandler(async (req, res) => {
+    const {fullName, email} = req.body
+
+    if (!fullName || !email) {
+        throw new ApiError(400, "All fields are required")
+    }
+
+    const user = User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set: {
+                fullName: fullName,
+                email: email
+            }
+        },
+        {new: true} //shows the updated details
+    ).select("-password") 
+
+ return res
+ .status(200)
+ .json(new ApiResponse(200, "Account details updated successfully"))
+})
+
+// controller for updating files, advice: always write separate controllers for updating files
+// file update krne keliye multer middleware use krna hoga kyunki uss se file update krwayi h
+// also authenticate wala v krna hoga kyunki agar user logged in nahi hai toh update kaise krega
+const updateUserAvatar = asyncHandler(async (req, res) => {
+    // req.files multer middleware se milrha
+    // ab wahan pe multiple files kr rhe the islie req.files liye the
+    // yahan pe sirf ek file ki baat h toh req.file lena hoga
+
+    const avatarLocalPath = req.file?.path
+
+    if (!avatarLocalPath) {
+        throw new ApiError(400, "file is missing")
+    }
+
+    const avatar = await uploadOnCloudinary(avatarLocalPath)
+
+    if(!avatar.url){
+        throw new ApiError(400, "error while uploading on avatar")
+    }
+
+    const user = await User.findByIdAndUpdate(
+        req.user?._id,
+         {
+            // set se ye horha h ki sirf avatar ko update kr rhe pura har cheez ko nhi
+            $set:{
+                avatar: avatar.url
+            }
+         },
+        {new: true}
+    ).select("-password")
+    
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200, user, "avatar image updated successfully")
+    )
+})
+
+//for cover image same 
+const updateUserCoverImage = asyncHandler(async (req, res) => {
+    // req.files multer middleware se milrha
+    // ab wahan pe multiple files kr rhe the islie req.files liye the
+    // yahan pe sirf ek file ki baat h toh req.file lena hoga
+
+    const coverImageLocalPath = req.file?.path
+
+    if (!coverImageLocalPath) {
+        throw new ApiError(400, "file is missing")
+    }
+
+    const coverImage = await uploadOnCloudinary(coverImageLocalPathLocalPath)
+
+    if(!coverImage.url){
+        throw new ApiError(400, "error while uploading cover image")
+    }
+
+    const user = await User.findByIdAndUpdate(
+        req.user?._id,
+         {
+            // set se ye horha h ki sirf avatar ko update kr rhe pura har cheez ko nhi
+            $set:{
+                coverImage: coverImage.url
+            }
+         },
+        {new: true}
+    ).select("-password")
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200, user, "cover image updated successfully")
+    )
+})
 
 
 
@@ -260,5 +385,10 @@ export {
     registerUser,
     loginUser,
     logoutUser,
-    refreshAccessToken
+    refreshAccessToken,
+    changeCurrentPassword,
+    getCurrentUser,
+    updateAccountDetails,
+    updateUserAvatar,
+    updateUserCoverImage
 }

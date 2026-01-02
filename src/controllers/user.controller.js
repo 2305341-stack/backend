@@ -187,8 +187,8 @@ const registerUser = asyncHandler( async (req, res) => {
    await User.findByIdAndUpdate(
         req.user._id,
         {
-            $set: {
-                refreshToken: undefined
+            $unset: {
+                refreshToken: 1 //pehle set tha aur refresh token undefined tha but wo kaam ni kiya
             }
         },
         {

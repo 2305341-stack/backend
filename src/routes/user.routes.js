@@ -51,7 +51,7 @@ router.route("/update-account").patch(verifyJWT, updateAccountDetails)
 //ek aur cheez verifyJWT wahin use horhi h jahan jahan humko ye chahiye ki user logged in hona chhaiye,so basically authentication jaisa
 
 router.route("/avatar").patch(verifyJWT, upload.single("avatar"), updateUserAvatar) //upload multer ka hum use kr rhe functionality
-router.route("/cover-image").patch(verifyJWT, upload.single("/coverImage"),updateUserCoverImage)
+router.route("/cover-image").patch(verifyJWT, upload.single("coverImage"),updateUserCoverImage)
 
 router.route("/c/:username").get(verifyJWT, getUserChannelProfile)
 

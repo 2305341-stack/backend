@@ -10,6 +10,7 @@ import { User } from "../models/user.model.js" // here we are importing the User
 import { uploadOnCloudinary } from "../utils/cloudinary.js"
 import { ApiResponse } from "../utils/ApiResponse.js"; // to return the response
 import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 
 const generateAccessAndRefreshTokens = async(userId) => {
     try {
@@ -386,6 +387,147 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
     )
 })
 
+// subscribers and subscribed to
+const getUserChannelProfile = asyncHandler(async (req, res) => {
+    const {username} = req.params
+
+    if (!username?.trim()) {
+        throw new ApiError(400, "username is missing")
+    }
+
+   const channel = await User.aggregate([
+    {
+        $match: {
+            username: username?.toLowerCase() // we always use ? method for safety
+        }
+    },
+    {
+        $lookup: {
+            from: "subscriptions",
+            localField: "_id",
+            foreignField: "channel",
+            as: "subscribers"
+        }
+    },
+    {
+        $lookup: {
+            from: "subscriptions",
+            localField: "_id",
+            foreignField: "subscriber",
+            as: "subscribedTo"
+        }
+    },
+    {
+        $addFields: {
+            subscribersCount: {
+                $size: "$subscribers"
+            },
+            channelsSubscribedToCount: {
+                $size: "$subscribedTo"
+            },
+            // this is for the subscribe button, frontend wale ko true ya false dedengey and wahan se hojayega
+            isSubscribed: {
+                $cond: {
+                    if: {$in: [req.user?._id, "$subscribers.subscriber"]},
+                    then: true,
+                    else: false
+                }
+            }
+        }
+    }, //final pipeline where we will use project
+    // projection deta h ki m saari values ko pass on nhi karunga bas selected cheezon ko karunga
+    //jis value ko pass on krna h uske aage laga dijiye 1
+    {
+        $project: {
+            fullName: 1,
+            username: 1,
+            subscribersCount: 1,
+            channelsSubscribedToCount: 1,
+            isSubscribed: 1,
+            avatar: 1,
+            coverImage: 1,
+            email: 1
+        }
+    }
+
+   ])
+// an aggregation pipeline returns an array
+   if (!channel?.length) {
+    throw new ApiError(404, "channel does not exist")
+   }
+
+   return res
+   .status(200)
+   .json(
+        new ApiResponse(200, channel[0], "user channel fetched successfully" )
+   )
+})
+
+// pipeline for watch history
+
+const getWatchHistory = asyncHandler(async (req, res) => {
+    // jab hum mongodb m jaake id dekhte h tab humko id nhi ek string milti h(impppp)
+    //mongoose internally ye string ko mongodb ki object id m convert krdeta h
+    // humko iss id co convert krna padta h
+    const user = await User.aggregate([
+        {
+            $match: {
+               //_id: req.user._id // hum ye nhu likh skte kyunki yahan pe mongoose kaam ni krta h
+                // aggregation pipeline ka jo v code h wo directly hi jata h
+                // mongoose ki object id bannani padegi jiska option mongoose khud hi deta h
+                _id: new mongoose.Types.ObjectId(req.user._id)
+            }
+        },
+        {
+            $lookup: {
+                from: "videos",
+                localField: "watchHistory",
+                foreignField: "_id",
+                as: "watchHistory",
+                pipeline: [
+                    // nested lookup kr rhe h warna humko sirf owner milta watch history nhi
+                    // ab hum iss se videos k andar aagye h
+                    // ab yahan se lookup lagayengey
+                    {
+                        $lookup: {
+                            from: "users",
+                            localField: "owner", //kyunki videos k andar h aur id owner se match krti h na
+                            foreignField: "_id",
+                            as: "owner",
+                            pipeline: [
+                                {
+                                    $project: {
+                                        fullName: 1,
+                                        username: 1,
+                                        avatar: 1
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        $addFields: {
+                            owner: {
+                                $first: "$owner"
+                            }
+                        }
+                    }
+                ]
+            }
+        }
+    ])
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+            user[0].watchHistory, // pipeline m humesha pehla element return krna hota h
+            "Watch history fetched successfully"
+        )
+    )
+})
+
+
 
 
 export {
@@ -397,5 +539,7 @@ export {
     getCurrentUser,
     updateAccountDetails,
     updateUserAvatar,
-    updateUserCoverImage
+    updateUserCoverImage,
+    getUserChannelProfile,
+    getWatchHistory
 }

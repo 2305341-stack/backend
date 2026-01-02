@@ -130,9 +130,11 @@ const registerUser = asyncHandler( async (req, res) => {
         // send cookie to the user (for these tokens), we will learn about secure cookies
 
         const {email, username, password} = req.body
-        if (!username || !email) {
+        if (!username && !email) {
             throw new ApiError(400, "username or email is required")
         }
+        //here is an alternative
+        // if(!(username|| email))
 
         const user = await User.findOne({
             $or: [{username}, {email}]
@@ -200,7 +202,7 @@ const registerUser = asyncHandler( async (req, res) => {
     .clearCookie("accessToken", options)
     .clearCookie("refreshToken",options)
     .json(new ApiResponse(200, {}, "User logged out "))
-    
+
  })
 
 
